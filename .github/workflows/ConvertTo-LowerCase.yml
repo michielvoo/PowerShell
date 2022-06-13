@@ -1,0 +1,37 @@
+name: ConvertTo-CamelCase
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ConvertTo-LowerCase/*
+
+defaults:
+  run:
+    shell: pwsh
+    working-directory: ConvertTo-LowerCase
+
+jobs:
+  default:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: test
+        run: |
+          Invoke-Pester -Configuration @{
+              Output = @{
+                  Verbosity = "Detailed"
+              }
+          }
+          $Version = (Test-ScriptFileInfo -Path "ConvertTo-LowerCase.ps1").Version
+          $Name = git rev-parse --abbrev-ref HEAD
+          $Timestamp = git log -1 --format=%ct
+          Update-ScriptFileInfo -Path "ConvertTo-LowerCase.ps1" -Version "${Version}-${Name}${Timestamp}"
+          Write-Host (Test-ScriptFileInfo -Path "ConvertTo-LowerCase.ps1").Version
+          Register-PackageSource -ProviderName "PowerShellGet" -Name "GitHub" -Location "https://nuget.pkg.github.com/michielvoo/index.json" -PublishLocation "https://nuget.pkg.github.com/michielvoo/api/v2/"
+          Get-PSRepository
+          Publish-Script -Path "ConvertTo-LowerCase.ps1" -Repository "GitHub" -NuGetApiKey "${{ secrets.GITHUB_TOKEN }}"
+
